@@ -5,21 +5,36 @@
 ###########################
 # Start
 ###########################
-echo -e "==========Loading ${TXT_FAIL}bashrc${TXT_RST}=========="
+# If not running interactively, don't do anything
+case $- in
+    *i*) ;;
+      *) return;;
+esac
+echo -e "=============Loading ${TXT_BLD}${TXT_BLU}bashrc${TXT_RST}============="
 ###########################
-# Sourcing files
+# History stuff
 ###########################
-[[ -f /usr/local/bin/proutes.sh ]] && \. /usr/local/bin/proutes.sh &>/dev/null
-###########################
-# Shell variables
-###########################
+# don't put duplicate lines or lines starting with space in the history.
+HISTCONTROL=ignoreboth
 
+# append to the history file, don't overwrite it
+shopt -s histappend
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=1000
+HISTFILESIZE=2000
+###########################
+# Shell options
+###########################
+# check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
+shopt -s checkwinsize
 ###########################
 # Functions
 ###########################
 yorn_ask () {
 	local _r
-  read -rp "$* [Y/n]: " _r
+  	read -rp "$* [Y/n]: " _r
 	until [[ ${_r,,} == y || ${_r,,} == n ]]; do
 		printf '%s\n' "Please respond only with y or n"
 		read -rp "$* [Y/n]: " _r
@@ -28,97 +43,6 @@ yorn_ask () {
 		return 0
 	else
 		return 1
-	fi
-}
-jpc-manta () {
-	export MANTA_URL='https://us-east.manta.joyent.com'
-	export MANTA_USER=$JPC_MANTA_USER
-	echo -e "Manta set to:\tJPC East"
-}
-spc-manta-east () {
-	export MANTA_URL=$SPC_EAST_MURL
-	export MANTA_USER=$SPC_MANTA_USER
-	echo -e "Manta set to:\tSPC East"
-}
-spc-manta-central () {
-	export MANTA_URL=$SPC_CENTRAL_MURL
-	export MANTA_USER=$SPC_MANTA_USER
-	echo -e "Manta set to:\tSPC Central"
-}
-spc-manta-southeast () {
-	export MANTA_URL=$SPC_SE_MURL
-	export MANTA_USER=$SPC_MANTA_USER
-	echo -e "Manta set to:\tSPC Southeast"
-}
-spc-manta-northeast () {
-	export MANTA_URL=$SPC_NE_MURL
-	export MANTA_USER=$SPC_MANTA_USER
-	echo -e "Manta set to:\tSPC Northeast"
-}
-go () {
-	declare -A local goARR=(
-		[tools]='/Users/jessebutryn/tools'
-		[tmp]='/Users/jessebutryn/tmp'
-		[wtf]='/Users/jessebutryn/Documents/Reference/wtfisbash'
-		[pics]='/Users/jessebutryn/Pictures'
-		[scripts]='/Users/jessebutryn/Documents/scripts'
-		[training]='/Users/jessebutryn/Documents/Projects/Training'
-		[noc]='/Users/jessebutryn/tools/joyent/NOCTools'
-	)
-	PS3='Select a directory: '
-	if [[ -z $1 ]]; then
-		echo "Where do you want to go?"
-		select index in "${!goARR[@]}" Exit; do
-			case $index in
-				Exit)
-					echo "Goodbye"
-					return 0 && break 2
-					;;
-				*)
-					cd "${goARR[$index]}"
-					break
-					;;
-			esac
-		done
-	else
-		shopt -s nocasematch
-		case $1 in
-			tools) 		cd "${goARR[tools]}";;
-			tmp|temp) 	cd "${goARR[tmp]}";;
-			wtf*)		cd "${goARR[wtf]}";;
-			pic*)		cd "${goARR[pics]}";;
-			scripts)	cd "${goARR[scripts]}";;
-			training)	cd "${goARR[training]}";;
-			noc)		cd "${goARR[noc]}";;
-			*)			echo "$1 is not a valid go option"; return 1;;
-		esac
-		shopt -u nocasematch
-	fi
-}
-smash () {
-	local T_PROC=$1
-	local T_PIDS=($(pgrep -i "$T_PROC"))
-	if [[ "${#T_PIDS[@]}" -ge 1 ]]; then
-		echo "Found the following processes:"
-		for pid in "${T_PIDS[@]}"; do
-			echo "$pid" "$(ps -p "$pid" -o comm= | awk -F'/' '{print $NF}')" | column -t
-		done
-		if ( yorn.ask "Kill them?" ); then
-			for pid in "${T_PIDS[@]}"; do
-				echo "Killing ${pid}..."
-				( kill -15 "$pid" ) && continue
-				sleep 2
-				( kill -2 "$pid" ) && continue
-				sleep 2
-				( kill -1 "$pid" ) && continue
-				echo "What the hell is this thing?" >&2 && return 1
-			done
-		else
-			echo "Exiting..."
-			return 0
-		fi
-	else
-		echo "No processes found for: $1" >&2 && return 1
 	fi
 }
 gitacp () {
@@ -141,11 +65,6 @@ gitacp () {
 		echo "Error! Failed to commit."
 	fi
 }
-gman () {
-	local this_command=$1
-	( which -s "$this_command" ) || echo "ERROR! $this_command does not exist"
-	( man "$this_command" 2>/dev/null ) || googler "$this_command" "man page"
-}
 weather () {
 	local w_opts=
 	local w_loc=
@@ -164,43 +83,16 @@ weather () {
 		esac
 		shift
 	done
-	if [[ -z "$w_loc" ]]; then
-		case $MAC_LOCATION in
-			work) w_loc=littleton;;
-			home) w_loc=littleton;;
-			*)
-				echo "ERROR! I don't know where you want the weather for."
-				return 1
-			;;
-		esac
-	fi
 	if [[ "$w_opts" == ALL ]]; then
-		curl -Ss "wttr.in/${w_loc}"
+		curl -Ss "wttr.in/75422?u"
 	else
-		curl -Ss "wttr.in/${w_loc}" | tail -n +2 | head -n 6
+		curl -Ss "wttr.in/75422?u" | tail -n +2 | head -n 6
 	fi
-}
-mac.notify () {
-	local okay
-	local cancel
-	local message
-	while (( $# )); do
-		case $1 in
-			-o) shift; okay=$1;;
-			-c) shift; cancel=$1;;
-			*)	message=$@;break;;
-		esac
-		shift
-	done
-	osascript <<EOF
-		set theDialogText to "${message:-"Alert!"}"
-		display dialog theDialogText buttons {"${cancel:-Cancel}", "${okay:-Okay}"} default button "${okay:-Okay}" cancel button "${cancel:-Cancel}"
-EOF
 }
 parse_git_branch () {
   local branch
-	branch=$(git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/')
-	if [[ -n "$branch" && "$branch" == '(master)' ]]; then
+	branch=$(command git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/(\1)/')
+	if [[ -n "$branch" && "$branch" == '(master)' ]] || [[ -n "$branch" && "$branch" == '(main)' ]]; then
 		printf '%s' "${TXT_BLD}:${TXT_RST}${TXT_GOOD}${branch}${TXT_RST}"
 	elif [[ -n "$branch" ]]; then
 		printf '%s' "${TXT_BLD}:${TXT_RST}${TXT_FAIL}${branch}${TXT_RST}"
@@ -216,10 +108,10 @@ my.prompt () {
 			export PS1="\u \W \\$ "
 		;;
 		default)
-			export PS1="\[${TXT_BLD}\]{\[${TXT_RST}\]\[${TXT_WARN}\]\$?\[${TXT_RST}\]\[${TXT_BLD}\]}\[${TXT_RST}\]${col}${open}\[${TXT_YLW}\]\$(get.batt)\[${TXT_RST}\]${close}${col}${open}\w${close}${col}${open}\[${TXT_GRN}\]\$(TZ=UTC date '+%FT%TZ')\[${TXT_RST}\]${close}\$(parse_git_branch)\n\[${TXT_FAIL}\]\$ \[${TXT_RST}\]"
+			export PS1="\[${TXT_BLD}\]{\[${TXT_RST}\]\[${TXT_WARN}\]\$?\[${TXT_RST}\]\[${TXT_BLD}\]}\[${TXT_RST}\]${col}${open}${TXT_WHT}\w${TXT_RST}${close}${col}${open}\[${TXT_CYN}\]\$(TZ=UTC date '+%FT%TZ')\[${TXT_RST}\]${close}\$(parse_git_branch)\n\[${TXT_FAIL}\]\$ \[${TXT_RST}\]"
 		;;
 		nocolor)
-			export PS1="[\$(get.batt)]:[\w]:{\$?}\n\\$ \[$(tput sgr0)\]"
+			export PS1="[\w]:{\$?}\n\\$ \[$(tput sgr0)\]"
 		;;
 		ss)
 			export PS1="\\$ "
@@ -251,34 +143,12 @@ ascii () {
 				printf '%s' '¯\_(ツ)_/¯' | pbcopy
 				pbpaste && echo
 			;;
-			joyent)
-				printf '%s' "   __        .                   .
- _|  |_      | .-. .  . .-. :--. |-
-|_    _|     ;|   ||  |(.-' |  | |
-  |__|   \`--'  \`-' \`;-| \`-' '  ' \`-'
-                   /  ;
-                   \`-'" | pbcopy
-				pbpaste && echo
-			;;
 			*)
 				echo "Unsupported argument"
 			;;
 		esac
 		shift
 	done
-}
-get.batt () {
-	local lastexit=$?
-	local barray=($(pmset -g batt | tail -1 | awk '{print $3/1"%",$4,$5}'))
-	if [[ ${barray[1]/;/} == 'discharging' ]]; then
-		echo "${TXT_FAIL}${barray[0]}${TXT_RST}-${barray[2]/\(no/}"
-	else
-		echo "${TXT_GOOD}${barray[0]}${TXT_RST}"
-	fi
-	return "$lastexit"
-}
-flip () {
-	echo "$@" | /Users/jessebutryn/tools/personal/flip.pl
 }
 noformatize () {
 	printf '%s\n' '{noformat}' "$(pbpaste)" '{noformat}' | pbcopy
@@ -308,9 +178,87 @@ exit () {
 		command exit $1
 	fi
 }
+decode_kubernetes_secret () {
+	kubectl get secret "$@" -o json | jq '.data | map_values(@base64d)'
+}
+spongebobitize () {
+    echo "$@" | awk '
+{ 
+  split($0, chars, "")
+  for (i=1; i <= length($0); i++) {
+    if (i%2==0) {
+        printf("%s", tolower(chars[i]))
+    } else {
+        printf("%s", toupper(chars[i]))
+    }
+  }
+}END{printf("\n")}'
+}
+cl_known_hosts () {
+	local _line=$1
+	if [[ -n "$_line" ]]; then
+		sed -i.bak "${_line}d" /Users/jbutryn/.ssh/known_hosts
+	fi
+}
+create_ps_record () {
+	local _fqdn=$1
+	local _ip=$2
+	local _zone=${_fqdn#${_fqdn%.*.*.*}.}
+	local _resource=${_fqdn//\./_}
+	cat <<EOF
+resource "ns1_record" "$_resource" {
+  zone   = "$_zone"
+  domain = "$_fqdn"
+  type   = "A"
+  ttl    = 300
+  answers {
+    answer = "$_ip"
+  }
+}
+EOF
+}
+fix_docker () {
+	docker kill $(docker ps -q)
+	docker rm $(docker ps -a -q)
+	docker rmi $(docker images -q)
+	docker system prune
+}
+randpass () {
+	local _length=$1
+	LC_ALL=C tr -dc A-Za-z0-9 </dev/urandom | head -c "${_length:-14}"; echo
+}
+print_csv () {
+	local _n=$#
+	for ((i=1;i<=_n;i++)); do
+		if ((i==_n)); then
+			printf '%s\n' "${!i}"
+		else
+			printf '%s,' "${!i}"
+		fi
+	done
+}
+black () {
+	local _opts=(--line-length 120)
+	if [[ $1 == diff ]]; then
+		shift
+		_opts+=(--diff --color)
+	fi
+	command black "${_opts[@]}" "$@" 
+}
 ###########################
 # Aliases
 ###########################
+# enable color support of ls and also add handy aliases
+if [[ -x /usr/bin/dircolors ]]; then
+    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    alias ls='ls --color=auto'
+    #alias dir='dir --color=auto'
+    #alias vdir='vdir --color=auto'
+
+    alias grep='grep --color=auto'
+    alias fgrep='fgrep --color=auto'
+    alias egrep='egrep --color=auto'
+fi
 alias r='fc -s'
 alias cls='clear'
 alias c='clear'
@@ -321,29 +269,53 @@ alias text='open -a code'
 alias pre='open -a Preview'
 alias cd..='cd ..'
 alias reload='source ~/.bash_profile'
-alias spc-manta-se='spc-manta-southeast'
-alias spc-manta-ne='spc-manta-northeast'
-alias cnapi='/usr/local/NOCTools/bin/noc-cnapi'
-alias convert='/usr/local/NOCTools/bin/noc-convert'
-alias mshare='/usr/local/NOCTools/bin/noc-mshare'
-alias sshnode='/usr/local/NOCTools/bin/noc-sshnode'
-alias vmapi='/usr/local/NOCTools/bin/noc-vmapi'
-alias notify='/usr/local/NOCTools/bin/noc-notify'
-alias addmaint='/usr/local/NOCTools/bin/noc-addmaint'
-alias opschk='/Users/jessebutryn/tools/personal/opschk'
-alias mlive='/Users/jessebutryn/tools/joyent/manta-mlive/bin/mlive'
-alias merika='/Users/jessebutryn/tools/personal/unit-conversion/merika'
-alias innit='/Users/jessebutryn/tools/personal/unit-conversion/innit'
-#alias man='gman'
+alias merika='/Users/jbutryn/tools/personal/unit-conversion/merika'
+alias innit='/Users/jbutryn/tools/personal/unit-conversion/innit'
+alias hollowctl='/Users/jbutryn/tools/metal/hollowctl/hollowctl'
 alias yum='brew'
-alias vnc='open "/Applications/Remote Desktop - VNC.app"'
-alias ls='/usr/local/bin/gls --color'
-alias noc-switches='noc-switches -q'
-alias noc-zuora='noc-zuora -qs'
-alias pwatch='mjob watch -a poseidon'
-alias ndate='node /Users/jessebutryn/tools/personal/ndate/ndate.js'
-alias gchoocher=/Users/jessebutryn/tools/personal/gchoocher/bin/gchoocher
-alias skookumq=/Users/jessebutryn/tools/personal/skookumQ/bin/skookumq
+alias rc='code ~/.bashrc'
+alias profile='code ~/.bash_profile'
+#alias ls='/usr/local/bin/gls --color'
+alias ndate='node /Users/jbutryn/tools/personal/ndate/ndate.js'
+alias gchoocher=/Users/jbutryn/tools/personal/gchoocher/bin/gchoocher
+alias skookumq=/Users/jbutryn/tools/personal/skookumQ/bin/skookumq
+alias git=mgit
+alias tb='/Users/jbutryn/tools/metal/platops-toolbox/run.sh -m /Users/jbutryn -n host'
+alias k=kubectl
+alias debugpod='kubectl run -i --tty --rm debug --image=busybox --restart=Never -- /bin/bash'
+alias kgetall='kubectl get $(kubectl api-resources --verbs=list -o name | paste -sd, -) --ignore-not-found --show-kind -o wide $NS'
+alias ds="decode_kubernetes_secret"
+alias metal='cd /Users/jbutryn/tools/metal'
+alias cacherc='docker run -t cacherc cacherc'
+alias mctl=/usr/local/bin/mctl
+alias watch-css='sass --watch /Users/jbutryn/tools/metal/platops-web/platops-web/assets/main.scss:/Users/jbutryn/tools/metal/platops-web/platops-web/static/main.css'
+alias mypython='. ~/mypython/bin/activate'
+alias docker-dup='docker-compose down && docker-compose up -d'
+alias docker-exec='docker-compose exec st2client bash'
+alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
+if [[ -f ~/.bash_aliases ]]; then
+    . ~/.bash_aliases
+fi
+###########################
+# Miscellaneous
+###########################
+# make less more friendly for non-text input files, see lesspipe(1)
+[[ -x /usr/bin/lesspipe ]] && eval "$(SHELL=/bin/sh lesspipe)"
+
+# set variable identifying the chroot you work in (used in the prompt below)
+if [[ -z "${debian_chroot:-}" ]] && [[ -r /etc/debian_chroot ]]; then
+    debian_chroot=$(cat /etc/debian_chroot)
+fi
+# enable programmable completion features (you don't need to enable
+# this, if it's already enabled in /etc/bash.bashrc and /etc/profile
+# sources /etc/bash.bashrc).
+if ! shopt -oq posix; then
+  if [ -f /usr/share/bash-completion/bash_completion ]; then
+    . /usr/share/bash-completion/bash_completion
+  elif [ -f /etc/bash_completion ]; then
+    . /etc/bash_completion
+  fi
+fi
 ###########################
 # Prompt Config
 ###########################
@@ -352,5 +324,5 @@ my.prompt default
 # Apps that mess with my
 # path are annoying
 ###########################
-PATH=/usr/local/NOCTools/bin:/Users/jessebutryn/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin:/Users/jessebutryn/.nvm/versions/node/v6.11.5
+PATH=/home/jesse/git/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin
 export PATH
